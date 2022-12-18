@@ -1,0 +1,33 @@
+#!/bin/bash
+
+#---------------------
+# git install
+#---------------------
+
+function _install(){
+    echo install
+    sudo apt update
+    sudo apt install git
+    git --version
+    git config --global user.name "kusaki"
+    git config --global user.email "t.y.k.7.142.1@gmail.com"
+    git config --list
+}
+
+function _uninstall(){
+    echo uninstall
+    sudo apt update
+    sudo apt remove git
+    sudo apt update
+}
+
+
+function main(){
+  if [[ $1 = "-r" ]]; then
+  	_uninstall
+  else
+  	_install
+  fi
+}
+
+main $@

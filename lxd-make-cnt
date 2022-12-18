@@ -1,0 +1,56 @@
+#!/usr/bin/env bash
+set -Ceuo pipefail
+source tcommon.sh
+SETUP_FILE="setup-cnt.sh"
+
+#---------------------------------------
+function usage(){
+  cat << "EOF"
+USAGE:  lxd-make-cnt  <CNT_NAME> <USR_NAME> <IMG_NAME>
+  $1:   contaner name
+  $2:   user name (default: "ubuntu")
+  $3:   image name (default: "ubuntu/20.04")
+EOF
+}
+#---------------------------------------
+
+function validate_parameters() {
+  set +u
+  CNT_NAME=$1
+  USR_NAME=$2
+  IMG_NAME=$3
+  set -u
+
+  if [[ $CNT_NAME = "" ]]; then
+      echo "ERROR: <CNT_NAME> must be specified!!" >&2
+      usage >&2
+      exit 1
+  fi
+
+  if [[ $USR_NAME = "" ]]; then
+      USR_NAME="ubuntu"
+  fi
+
+  if [[ $IMG_NAME = "" ]]; then
+      IMG_NAME="ubuntu/20.04"
+  fi
+}
+
+function main() { 
+  validate_parameters $@
+  echo "CNT:  $CNT_NAME"
+  echo "USR:  $USR_NAME"
+  echo "IMG:  $IMG_NAME"
+  read -p "ok?[Y/n]>" ans; [[ ! $ans =~ ^$|(^Y|y$) ]] && exit
+
+  lxc launch images:${IMG_NAME} ${CNT_NAME}
+  lxc file push ${SCRIPT_DIR}/${SETUP_FILE} ${CNT_NAME}/root/
+  lxc exec ${CNT_NAME} -- sh -c "./${SETUP_FILE} ${USR_NAME}"
+
+  # 自動起動OFF
+  lxc config set ${CNT_NAME} boot.autostart false
+  
+  ${SCRIPT_DIR}/setup-ssh.sh ${CNT_NAME}
+}
+main $@
+

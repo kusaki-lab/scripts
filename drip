@@ -1,0 +1,6 @@
+#!/bin/bash
+
+function drip() {
+  cat $1 | grep "#_CMD:" | sed "s/#_CMD://"
+}
+drip $@

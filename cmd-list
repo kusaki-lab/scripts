@@ -1,0 +1,106 @@
+#!/usr/bin/env bash
+set -Ceuo pipefail
+source tcommon.sh
+
+#---------------------------------------
+# cmd-list
+#---------------------------------------
+SILENT_MODE=false
+PRINT_MODE=false
+OPT_STRING=hsp
+function usage(){
+cat <<EOF
+Description:
+  execute each line of <file> content with shell commands.
+
+Usage:
+  ${SCRIPT_NAME} [-${OPT_STRING}] <file>
+
+Prams:
+  <file>:     file of shell command list
+
+Options:
+  -h  :     show help
+  -s  :     silent mode: no confirm before execute a command.
+  -p  :     print mode: print only. not execute.
+
+EOF
+}
+#---------------------------------------
+function validate_parameters() {
+  set +u
+  CMD_FILE=$1
+  set -u
+  if [[ $CMD_FILE = "" ]]; then
+    CMD_FILE=/dev/stdin
+  fi
+}
+function get_current_tty() {
+  VAL=($(ps | grep ps))
+  echo "/dev/${VAL[1]}"
+}
+#---------------------------------------
+function main(){
+  echo "CMD_FILE: ${CMD_FILE}" >&2
+  local current_tty=$(get_current_tty)
+  while read cmd <&3; do
+    if ! ($SILENT_MODE || $PRINT_MODE); then
+      echo "CMD:[ $cmd ]"
+      read -p "ok?[Y/n/a] > " ans < $current_tty
+      if [[ $ans =~ N|n ]]; then
+        colored_echo red "skip."
+        continue
+      elif [[ $ans =~ ^$|(^Y|y$) ]]; then
+        :
+      else
+        colored_echo red "Abort."
+        exit 1
+      fi
+    fi
+    if $PRINT_MODE; then
+      echo $cmd
+    else
+      eval $cmd
+    fi
+  done 3< ${CMD_FILE}
+}
+#---------------------------------------
+function entry_point() {
+  validate_options $@
+  shift $((OPTIND - 1))
+  validate_parameters $@
+  main
+}
+
+#---------------------------------------
+function validate_options(){
+  while getopts :${OPT_STRING} opt; do
+    case $opt in
+     h)
+      usage >&2
+      exit 10
+      ;;
+     p)
+      PRINT_MODE=true
+      ;;
+     s)
+      SILENT_MODE=true
+      ;;
+     *)
+      error_echo "option [-$OPTARG] is not defined...."
+      exit 11
+      ;;
+    esac
+  done
+}
+#---------------------------------------
+function on_exit() {
+  local exit_code=$1
+  local print_code=$exit_code
+  # do something before exit
+  print_exit_code $exit_code
+  exit "$exit_code"
+}
+trap 'on_exit $?' EXIT
+entry_point $@
+
